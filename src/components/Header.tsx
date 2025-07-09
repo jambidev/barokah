@@ -1,0 +1,151 @@
+import React, { useState } from 'react';
+import { Menu, X, Phone, MapPin } from 'lucide-react';
+
+interface HeaderProps {
+  currentPage: string;
+  onNavigate: (page: string) => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const navigation = [
+    { name: 'Beranda', id: 'home' },
+    { name: 'Layanan', id: 'services' },
+    { name: 'Gallery', id: 'gallery' },
+    { name: 'Cek Barang', id: 'check-status' },
+    { name: 'Testimoni', id: 'testimonials' },
+    { name: 'Kontak', id: 'contact' }
+  ];
+
+  return (
+    <header className="relative bg-yellow-100 shadow-lg sticky top-0 z-50 overflow-hidden">
+      {/* Background Image */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-10 pointer-events-none"
+        style={{
+          backgroundImage: 'url(https://i.pinimg.com/736x/0c/3c/d3/0c3cd33bf0753f07db4bc735db8329ff.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
+      />
+      
+      {/* Animated Floating Particles */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-4 left-10 w-2 h-2 bg-blue-400 rounded-full opacity-30 animate-bounce" style={{ animationDelay: '0s', animationDuration: '3s' }}></div>
+        <div className="absolute top-8 right-20 w-1.5 h-1.5 bg-green-400 rounded-full opacity-40 animate-pulse" style={{ animationDelay: '1s', animationDuration: '4s' }}></div>
+        <div className="absolute bottom-6 left-1/4 w-1 h-1 bg-yellow-400 rounded-full opacity-50 animate-ping" style={{ animationDelay: '2s', animationDuration: '5s' }}></div>
+        <div className="absolute top-1/2 right-10 w-1.5 h-1.5 bg-purple-400 rounded-full opacity-30 animate-bounce" style={{ animationDelay: '0.5s', animationDuration: '3.5s' }}></div>
+      </div>
+      
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center py-4">
+          {/* Logo */}
+          <div 
+            className="flex items-center space-x-2 sm:space-x-3 cursor-pointer group"
+            onClick={() => onNavigate('home')}
+          >
+            <div className="bg-white p-1 sm:p-1.5 md:p-2 rounded-lg shadow-sm transition-transform duration-300 group-hover:scale-105">
+              <img 
+                src="/barokah.png" 
+                alt="Barokah Printer Logo" 
+                className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 lg:h-14 lg:w-14 xl:h-16 xl:w-16 object-contain"
+                style={{ 
+                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
+                  mixBlendMode: 'multiply'
+                }}
+              />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-lg md:text-xl lg:text-2xl xl:text-3xl font-bold text-gray-900 leading-tight transition-colors duration-300 group-hover:text-blue-600">Barokah Printer</h1>
+              <p className="text-xs sm:text-sm md:text-base text-gray-600 leading-tight hidden sm:block">Service Printer Terpercaya</p>
+            </div>
+          </div>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center space-x-8">
+            {navigation.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => onNavigate(item.id)}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  currentPage === item.id
+                    ? 'text-blue-600 bg-blue-50'
+                    : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                }`}
+              >
+                {item.name}
+              </button>
+            ))}
+          </nav>
+
+          {/* Contact Info & CTA */}
+          <div className="hidden md:flex items-center space-x-2 lg:space-x-4">
+            <div className="hidden lg:flex items-center space-x-2 text-xs lg:text-sm text-gray-600">
+              <Phone className="h-3 w-3 lg:h-4 lg:w-4" />
+              <span className="font-medium">+62853-6814-8449</span>
+            </div>
+            <button
+              onClick={() => onNavigate('booking')}
+              className="bg-blue-600 text-white px-2 md:px-3 lg:px-4 py-1.5 md:py-2 rounded-md hover:bg-blue-700 transition-colors font-medium text-xs md:text-sm shadow-md hover:shadow-lg"
+            >
+              Booking
+            </button>
+          </div>
+
+          {/* Mobile menu button */}
+          <div className="md:hidden">
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="text-gray-700 hover:text-blue-600 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              {isMenuOpen ? <X className="h-7 w-7" /> : <Menu className="h-7 w-7" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Navigation */}
+        {isMenuOpen && (
+          <div className="md:hidden border-t border-gray-200 py-4">
+            <nav className="flex flex-col space-y-1">
+              {navigation.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    onNavigate(item.id);
+                    setIsMenuOpen(false);
+                  }}
+                  className={`px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg text-left font-semibold text-sm sm:text-base transition-colors ${
+                    currentPage === item.id
+                      ? 'text-blue-600 bg-blue-50 border-l-4 border-blue-600'
+                      : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {item.name}
+                </button>
+              ))}
+              <div className="pt-3 sm:pt-4 space-y-2 sm:space-y-3">
+                <div className="flex items-center space-x-2 text-sm sm:text-base text-gray-600 px-3 sm:px-4">
+                  <Phone className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="font-medium">+62853-6814-8449</span>
+                </div>
+                <button
+                  onClick={() => {
+                    onNavigate('booking');
+                    setIsMenuOpen(false);
+                  }}
+                  className="w-full bg-blue-600 text-white px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm sm:text-base shadow-md hover:shadow-lg"
+                >
+                  Booking Sekarang
+                </button>
+              </div>
+            </nav>
+          </div>
+        )}
+      </div>
+    </header>
+  );
+};
+
+export default Header;
