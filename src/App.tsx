@@ -3,6 +3,8 @@ import AOS from 'aos';
 import 'aos/dist/aos.css';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import FloatingSocialButtons from './components/FloatingSocialButtons';
+import AdminLogin from './components/AdminLogin';
 import Landing from './components/Landing';
 import Services from './components/Services';
 import Gallery from './components/Gallery';
@@ -16,8 +18,13 @@ import LoadingScreen from './components/LoadingScreen';
 function App() {
   const [currentPage, setCurrentPage] = useState('home');
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
 
   useEffect(() => {
+    // Check admin authentication
+    const adminAuth = localStorage.getItem('admin_authenticated');
+    setIsAdminAuthenticated(adminAuth === 'true');
+    
     // Initialize AOS
     AOS.init({
       disable: false,
@@ -55,7 +62,25 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleAdminLogin = (isAuthenticated: boolean) => {
+    setIsAdminAuthenticated(isAuthenticated);
+    if (isAuthenticated) {
+      setCurrentPage('admin');
+    }
+  };
+
+  const handleAdminLogout = () => {
+    localStorage.removeItem('admin_authenticated');
+    localStorage.removeItem('admin_username');
+    setIsAdminAuthenticated(false);
+    setCurrentPage('home');
+  };
   const renderCurrentPage = () => {
+    // Show admin login if trying to access admin page without authentication
+    if (currentPage === 'admin' && !isAdminAuthenticated) {
+      return <AdminLogin onLogin={handleAdminLogin} />;
+    }
+    
     switch (currentPage) {
       case 'home':
         return <Landing onNavigate={handleNavigate} />;
@@ -68,7 +93,7 @@ function App() {
       case 'check-status':
         return <CheckStatus onNavigate={handleNavigate} />;
       case 'admin':
-        return <AdminDashboard onNavigate={handleNavigate} />;
+        return <AdminDashboard onNavigate={handleNavigate} onLogout={handleAdminLogout} />;
       case 'testimonials':
         return <Testimonials onNavigate={handleNavigate} />;
       case 'contact':
@@ -89,6 +114,7 @@ function App() {
         {renderCurrentPage()}
       </main>
       <Footer onNavigate={handleNavigate} />
+      <FloatingSocialButtons />
     </div>
   );
 }

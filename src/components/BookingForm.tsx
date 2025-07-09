@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { Calendar, Clock, MapPin, Phone, User, Mail, Printer, CheckCircle } from 'lucide-react';
-import { printerBrands, problemCategories } from '../data/printerData';
-import { saveBooking } from '../utils/bookingStorage';
+import { saveBookingToSupabase } from '../utils/bookingSupabase';
+import { fetchPrinterBrands, fetchProblemCategories } from '../utils/supabaseData';
 
 interface BookingFormProps {
   onNavigate: (page: string) => void;
 }
 
 const BookingForm: React.FC<BookingFormProps> = ({ onNavigate }) => {
+  const [printerBrands, setPrinterBrands] = useState<any[]>([]);
+  const [problemCategories, setProblemCategories] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -27,6 +29,27 @@ const BookingForm: React.FC<BookingFormProps> = ({ onNavigate }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingId, setBookingId] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load data from Supabase
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [brandsData, categoriesData] = await Promise.all([
+          fetchPrinterBrands(),
+          fetchProblemCategories()
+        ]);
+        setPrinterBrands(brandsData);
+        setProblemCategories(categoriesData);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -43,28 +66,31 @@ const BookingForm: React.FC<BookingFormProps> = ({ onNavigate }) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Save booking to localStorage
-    const newBookingId = saveBooking({
-      customerName: formData.name,
-      phone: formData.phone,
-      email: formData.email,
-      address: formData.address,
-      printerBrand: selectedBrand?.name || formData.printerBrand,
-      printerModel: selectedBrand?.models.find(m => m.id === formData.printerModel)?.name || formData.printerModel,
-      problemCategory: selectedCategory?.name || formData.problemCategory,
-      problemDescription: formData.problemDescription,
-      serviceType: formData.serviceType === 'bring-to-shop' ? 'Antar ke Toko' : 'Teknisi Datang',
-      appointmentDate: formData.appointmentDate,
-      appointmentTime: formData.appointmentTime,
-      notes: formData.notes
-    });
-    
-    setBookingId(newBookingId);
-    setIsSubmitting(false);
-    setIsSuccess(true);
+    try {
+      // Save booking to Supabase
+      const newBookingId = await saveBookingToSupabase({
+        customerName: formData.name,
+        phone: formData.phone,
+        email: formData.email,
+        address: formData.address,
+        printerBrand: selectedBrand?.name || formData.printerBrand,
+        printerModel: selectedBrand?.models.find(m => m.id === formData.printerModel)?.name || formData.printerModel,
+        problemCategory: selectedCategory?.name || formData.problemCategory,
+        problemDescription: formData.problemDescription,
+        serviceType: formData.serviceType,
+        appointmentDate: formData.appointmentDate,
+        appointmentTime: formData.appointmentTime,
+        notes: formData.notes
+      });
+      
+      setBookingId(newBookingId);
+      setIsSuccess(true);
+    } catch (error) {
+      console.error('Error saving booking:', error);
+      alert('Terjadi kesalahan saat menyimpan booking. Silakan coba lagi.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const nextStep = () => {
@@ -98,6 +124,18 @@ const BookingForm: React.FC<BookingFormProps> = ({ onNavigate }) => {
   const timeSlots = [
     '08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'
   ];
+
+  // Show loading while fetching data
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg">Memuat data...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Success Page
   if (isSuccess) {

@@ -18,6 +18,7 @@ import {
   Eye
 } from 'lucide-react';
 import { getBookings, getBookingById } from '../utils/bookingStorage';
+import { getBookingById as getBookingByIdSupabase, getAllBookings } from '../utils/bookingSupabase';
 
 interface CheckStatusProps {
   onNavigate: (page: string) => void;
@@ -27,9 +28,24 @@ const CheckStatus: React.FC<CheckStatusProps> = ({ onNavigate }) => {
   const [searchId, setSearchId] = useState('');
   const [searchResult, setSearchResult] = useState<any>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [allBookings, setAllBookings] = useState<any[]>([]);
+  const [isLoadingBookings, setIsLoadingBookings] = useState(true);
 
-  // Get all bookings from localStorage
-  const allBookings = getBookings();
+  // Load all bookings from Supabase
+  useEffect(() => {
+    const loadBookings = async () => {
+      try {
+        const bookings = await getAllBookings();
+        setAllBookings(bookings);
+      } catch (error) {
+        console.error('Error loading bookings:', error);
+      } finally {
+        setIsLoadingBookings(false);
+      }
+    };
+
+    loadBookings();
+  }, []);
 
   const handleSearch = async () => {
     if (!searchId.trim()) {
@@ -39,16 +55,18 @@ const CheckStatus: React.FC<CheckStatusProps> = ({ onNavigate }) => {
 
     setIsSearching(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const result = getBookingById(searchId);
-    
-    setSearchResult(result);
-    setIsSearching(false);
-    
-    if (!result) {
-      alert('ID Booking tidak ditemukan. Pastikan ID yang Anda masukkan benar.');
+    try {
+      const result = await getBookingByIdSupabase(searchId);
+      setSearchResult(result);
+      
+      if (!result) {
+        alert('ID Booking tidak ditemukan. Pastikan ID yang Anda masukkan benar.');
+      }
+    } catch (error) {
+      console.error('Error searching booking:', error);
+      alert('Terjadi kesalahan saat mencari booking. Silakan coba lagi.');
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -249,11 +267,11 @@ const CheckStatus: React.FC<CheckStatusProps> = ({ onNavigate }) => {
               <div className="p-4 sm:p-6 lg:p-8">
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
                   {[
-                    { icon: User, label: 'Customer', value: searchResult.customerName },
-                    { icon: Printer, label: 'Printer', value: `${searchResult.printerBrand} ${searchResult.printerModel}` },
-                    { icon: Calendar, label: 'Tanggal Service', value: formatDate(searchResult.appointmentDate) },
+                    { icon: User, label: 'Customer', value: searchResult.customer.name },
+                    { icon: Printer, label: 'Printer', value: `${searchResult.printer.brand} ${searchResult.printer.model}` },
+                    { icon: Calendar, label: 'Tanggal Service', value: formatDate(searchResult.service.date) },
                     { icon: Wrench, label: 'Teknisi', value: searchResult.technician },
-                    { icon: Package, label: 'Jenis Service', value: searchResult.serviceType },
+                    { icon: Package, label: 'Jenis Service', value: searchResult.service.type },
                     { icon: FileText, label: 'Estimasi Biaya', value: searchResult.estimatedCost }
                   ].map((item, index) => (
                     <div key={index} className="flex items-center space-x-2 sm:space-x-3 card-hover-subtle p-2 sm:p-3 rounded-lg" data-aos="fade-up" data-aos-delay={200 + index * 100}>
@@ -319,12 +337,12 @@ const CheckStatus: React.FC<CheckStatusProps> = ({ onNavigate }) => {
                 
                 <div className="space-y-3 sm:space-y-4">
                   {[
-                    { label: 'Nama Lengkap', value: searchResult.customerName },
-                    { label: 'Nomor HP', value: searchResult.phone },
-                    { label: 'Email', value: searchResult.email },
-                    { label: 'Alamat', value: searchResult.address },
-                    { label: 'Kategori Masalah', value: searchResult.problemCategory },
-                    { label: 'Deskripsi Masalah', value: searchResult.problemDescription },
+                    { label: 'Nama Lengkap', value: searchResult.customer.name },
+                    { label: 'Nomor HP', value: searchResult.customer.phone },
+                    { label: 'Email', value: searchResult.customer.email },
+                    { label: 'Alamat', value: searchResult.customer.address },
+                    { label: 'Kategori Masalah', value: searchResult.problem.category },
+                    { label: 'Deskripsi Masalah', value: searchResult.problem.description },
                     ...(searchResult.notes ? [{ label: 'Catatan Teknisi', value: searchResult.notes }] : [])
                   ].map((item, index) => (
                     <div key={index} className="card-hover-subtle p-2 sm:p-3 rounded-lg" data-aos="fade-up" data-aos-delay={index * 100}>
@@ -439,67 +457,74 @@ const CheckStatus: React.FC<CheckStatusProps> = ({ onNavigate }) => {
             </p>
           </div>
           
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  {['ID & Customer', 'Printer & Masalah', 'Service', 'Tanggal', 'Status', 'Aksi'].map((header, index) => (
-                    <th key={index} className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      {header}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {allBookings.map((booking, index) => (
-                  <tr key={booking.id} className="hover:bg-gray-50 card-hover-subtle" data-aos="fade-up" data-aos-delay={index * 100}>
-                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-xs sm:text-sm font-medium text-blue-600">
-                          #{booking.id}
-                        </div>
-                        <div className="text-xs sm:text-sm font-medium text-gray-900">
-                          {booking.customerName}
-                        </div>
-                        <div className="text-xs sm:text-sm text-gray-500">{booking.phone}</div>
-                      </div>
-                    </td>
-                    <td className="px-3 sm:px-6 py-3 sm:py-4">
-                      <div>
-                        <div className="text-xs sm:text-sm font-medium text-gray-900">
-                          {booking.printerBrand} {booking.printerModel}
-                        </div>
-                        <div className="text-xs sm:text-sm text-gray-500">{booking.problemCategory}</div>
-                      </div>
-                    </td>
-                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                      <div className="text-xs sm:text-sm text-gray-900">{booking.serviceType}</div>
-                      <div className="text-xs sm:text-sm text-gray-500">{booking.technician}</div>
-                    </td>
-                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                      <div className="text-xs sm:text-sm text-gray-900">{formatDate(booking.appointmentDate)}</div>
-                      <div className="text-xs sm:text-sm text-gray-500">{booking.appointmentTime} WIB</div>
-                    </td>
-                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(booking.status)}`}>
-                        {getStatusIcon(booking.status)}
-                        <span className="ml-1">{getStatusLabel(booking.status)}</span>
-                      </span>
-                    </td>
-                    <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
-                      <button
-                        onClick={() => setSearchId(booking.id)}
-                        className="text-blue-600 hover:text-blue-900 flex items-center space-x-1 card-hover-scale"
-                      >
-                        <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
-                        <span className="hidden sm:inline">Detail</span>
-                      </button>
-                    </td>
+          {isLoadingBookings ? (
+            <div className="p-8 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Memuat data booking...</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    {['ID & Customer', 'Printer & Masalah', 'Service', 'Tanggal', 'Status', 'Aksi'].map((header, index) => (
+                      <th key={index} className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        {header}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {allBookings.map((booking, index) => (
+                    <tr key={booking.id} className="hover:bg-gray-50 card-hover-subtle" data-aos="fade-up" data-aos-delay={index * 100}>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-xs sm:text-sm font-medium text-blue-600">
+                            #{booking.id}
+                          </div>
+                          <div className="text-xs sm:text-sm font-medium text-gray-900">
+                            {booking.customer.name}
+                          </div>
+                          <div className="text-xs sm:text-sm text-gray-500">{booking.customer.phone}</div>
+                        </div>
+                      </td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4">
+                        <div>
+                          <div className="text-xs sm:text-sm font-medium text-gray-900">
+                            {booking.printer.brand} {booking.printer.model}
+                          </div>
+                          <div className="text-xs sm:text-sm text-gray-500">{booking.problem.category}</div>
+                        </div>
+                      </td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                        <div className="text-xs sm:text-sm text-gray-900">{booking.service.type}</div>
+                        <div className="text-xs sm:text-sm text-gray-500">{booking.technician}</div>
+                      </td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                        <div className="text-xs sm:text-sm text-gray-900">{formatDate(booking.service.date)}</div>
+                        <div className="text-xs sm:text-sm text-gray-500">{booking.service.time} WIB</div>
+                      </td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(booking.status)}`}>
+                          {getStatusIcon(booking.status)}
+                          <span className="ml-1">{getStatusLabel(booking.status)}</span>
+                        </span>
+                      </td>
+                      <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
+                        <button
+                          onClick={() => setSearchId(booking.id)}
+                          className="text-blue-600 hover:text-blue-900 flex items-center space-x-1 card-hover-scale"
+                        >
+                          <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
+                          <span className="hidden sm:inline">Detail</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Help Section */}

@@ -1,5 +1,6 @@
 import React from 'react';
-import { problemCategories } from '../data/printerData';
+import { useState, useEffect } from 'react';
+import { fetchProblemCategories } from '../utils/supabaseData';
 import { DivideIcon as LucideIcon } from 'lucide-react';
 import * as Icons from 'lucide-react';
 
@@ -8,6 +9,24 @@ interface ServicesProps {
 }
 
 const Services: React.FC<ServicesProps> = ({ onNavigate }) => {
+  const [problemCategories, setProblemCategories] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const categories = await fetchProblemCategories();
+        setProblemCategories(categories);
+      } catch (error) {
+        console.error('Error loading categories:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadCategories();
+  }, []);
+
   const getIcon = (iconName: string): LucideIcon => {
     const IconComponent = Icons[iconName as keyof typeof Icons] as LucideIcon;
     return IconComponent || Icons.AlertCircle;
@@ -38,6 +57,17 @@ const Services: React.FC<ServicesProps> = ({ onNavigate }) => {
         return 'Normal';
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg">Memuat layanan...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen py-12 bg-gray-50 animated-bg relative overflow-hidden">
