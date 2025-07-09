@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useEffect } from 'react';
 import { 
   BarChart3, 
   Users, 
@@ -19,16 +20,67 @@ import {
   Printer,
   Wrench,
   Shield,
-  Zap
+  Zap,
+  LogOut
 } from 'lucide-react';
+import { getAllBookings } from '../utils/bookingSupabase';
+import { fetchTechnicians, updateBookingStatus, assignTechnician } from '../utils/supabaseData';
 
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
+  onLogout: () => void;
 }
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [searchTerm, setSearchTerm] = useState('');
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [technicians, setTechnicians] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalBookings: 0,
+    pendingBookings: 0,
+    completedBookings: 0,
+    totalRevenue: 0,
+    thisMonthRevenue: 0,
+    activeTechnicians: 0
+  });
+
+  // Load data from Supabase
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [bookingsData, techniciansData] = await Promise.all([
+          getAllBookings(),
+          fetchTechnicians()
+        ]);
+        
+        setBookings(bookingsData);
+        setTechnicians(techniciansData);
+        
+        // Calculate stats
+        const totalBookings = bookingsData.length;
+        const pendingBookings = bookingsData.filter(b => b.status === 'pending').length;
+        const completedBookings = bookingsData.filter(b => b.status === 'completed').length;
+        const activeTechnicians = techniciansData.filter(t => t.is_active).length;
+        
+        setStats({
+          totalBookings,
+          pendingBookings,
+          completedBookings,
+          totalRevenue: completedBookings * 100000, // Estimate
+          thisMonthRevenue: completedBookings * 50000, // Estimate
+          activeTechnicians
+        });
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   // Service data
   const serviceCategories = {
@@ -178,90 +230,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     }
   };
 
-  // Mock data
-  const stats = {
-    totalBookings: 156,
-    pendingBookings: 23,
-    completedBookings: 133,
-    totalRevenue: 15600000,
-    thisMonthRevenue: 3200000,
-    activeTechnicians: 8
+  const handleStatusUpdate = async (bookingId: string, newStatus: string) => {
+    try {
+      await updateBookingStatus(bookingId, newStatus);
+      // Reload bookings
+      const updatedBookings = await getAllBookings();
+      setBookings(updatedBookings);
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
   };
-
-  const recentBookings = [
-    {
-      id: 'BK001',
-      customerName: 'Ahmad Wijaya',
-      phone: '+62853-6814-8449',
-      printerBrand: 'Canon',
-      printerModel: 'PIXMA G2010',
-      problem: 'Hasil cetak putus-putus',
-      serviceType: 'Teknisi Datang',
-      date: '2024-01-15',
-      time: '10:00',
-      status: 'pending',
-      technician: 'Budi Santoso'
-    },
-    {
-      id: 'BK002',
-      customerName: 'Siti Nurhaliza',
-      phone: '+62853-6814-8449',
-      printerBrand: 'Epson',
-      printerModel: 'L3110',
-      problem: 'Head tersumbat',
-      serviceType: 'Antar ke Toko',
-      date: '2024-01-15',
-      time: '14:00',
-      status: 'in-progress',
-      technician: 'Andi Pratama'
-    },
-    {
-      id: 'BK003',
-      customerName: 'Dedi Kurniawan',
-      phone: '+62853-6814-8449',
-      printerBrand: 'HP',
-      printerModel: 'DeskJet 2135',
-      problem: 'Paper jam',
-      serviceType: 'Teknisi Datang',
-      date: '2024-01-14',
-      time: '16:00',
-      status: 'completed',
-      technician: 'Sari Wulandari'
-    }
-  ];
-
-  const technicians = [
-    {
-      id: 'T001',
-      name: 'Budi Santoso',
-      phone: '+62853-6814-8449',
-      specialization: ['Canon', 'Epson'],
-      experience: 5,
-      rating: 4.8,
-      activeJobs: 3,
-      status: 'available'
-    },
-    {
-      id: 'T002',
-      name: 'Andi Pratama',
-      phone: '+62853-6814-8449',
-      specialization: ['HP', 'Brother'],
-      experience: 4,
-      rating: 4.7,
-      activeJobs: 2,
-      status: 'busy'
-    },
-    {
-      id: 'T003',
-      name: 'Sari Wulandari',
-      phone: '+62853-6814-8449',
-      specialization: ['Samsung', 'Fuji Xerox'],
-      experience: 6,
-      rating: 4.9,
-      activeJobs: 1,
-      status: 'available'
-    }
-  ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -298,6 +276,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
     }).format(amount);
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg">Memuat dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -314,6 +303,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               </button>
               <button className="p-2 text-gray-400 hover:text-gray-600">
                 <Settings className="h-5 w-5 sm:h-6 sm:w-6" />
+              </button>
+              <button 
+                onClick={onLogout}
+                className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+              >
+                <LogOut className="h-5 w-5 sm:h-6 sm:w-6" />
               </button>
             </div>
           </div>
@@ -434,23 +429,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {recentBookings.slice(0, 5).map((booking) => (
+                    {bookings.slice(0, 5).map((booking) => (
                       <tr key={booking.id}>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                           <div>
                             <div className="text-xs sm:text-sm font-medium text-gray-900">
-                              {booking.customerName}
+                              {booking.customer.name}
                             </div>
-                            <div className="text-xs sm:text-sm text-gray-500">{booking.phone}</div>
+                            <div className="text-xs sm:text-sm text-gray-500">{booking.customer.phone}</div>
                           </div>
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                           <div className="text-xs sm:text-sm text-gray-900">
-                            {booking.printerBrand} {booking.printerModel}
+                            {booking.printer.brand} {booking.printer.model}
                           </div>
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                          <div className="text-xs sm:text-sm text-gray-900">{booking.problem}</div>
+                          <div className="text-xs sm:text-sm text-gray-900">{booking.problem.description}</div>
                         </td>
                         <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                           <span className={`inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
@@ -466,7 +461,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                             <button className="text-blue-600 hover:text-blue-900">
                               <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                             </button>
-                            <button className="text-green-600 hover:text-green-900">
+                            <button 
+                              onClick={() => handleStatusUpdate(booking.id, 'confirmed')}
+                              className="text-green-600 hover:text-green-900"
+                            >
                               <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                             </button>
                           </div>
@@ -538,7 +536,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {recentBookings.map((booking) => (
+                    {bookings.map((booking) => (
                       <tr key={booking.id}>
                         <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                           <div>
@@ -546,27 +544,27 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                               #{booking.id}
                             </div>
                             <div className="text-xs sm:text-sm font-medium text-gray-900">
-                              {booking.customerName}
+                              {booking.customer.name}
                             </div>
-                            <div className="text-xs sm:text-sm text-gray-500">{booking.phone}</div>
+                            <div className="text-xs sm:text-sm text-gray-500">{booking.customer.phone}</div>
                           </div>
                         </td>
                         <td className="px-2 sm:px-6 py-3 sm:py-4">
                           <div>
                             <div className="text-xs sm:text-sm font-medium text-gray-900">
-                              {booking.printerBrand} {booking.printerModel}
+                              {booking.printer.brand} {booking.printer.model}
                             </div>
-                            <div className="text-xs sm:text-sm text-gray-500">{booking.problem}</div>
+                            <div className="text-xs sm:text-sm text-gray-500">{booking.problem.category}</div>
                           </div>
                         </td>
                         <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                          <div className="text-xs sm:text-sm text-gray-900">{booking.serviceType}</div>
+                          <div className="text-xs sm:text-sm text-gray-900">{booking.service.type}</div>
                           <div className="text-xs sm:text-sm text-gray-500">{booking.technician}</div>
                         </td>
                         <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                           <div>
-                            <div className="text-xs sm:text-sm text-gray-900">{booking.date}</div>
-                            <div className="text-xs sm:text-sm text-gray-500">{booking.time} WIB</div>
+                            <div className="text-xs sm:text-sm text-gray-900">{booking.service.date}</div>
+                            <div className="text-xs sm:text-sm text-gray-500">{booking.service.time} WIB</div>
                           </div>
                         </td>
                         <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
@@ -580,10 +578,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                             <button className="text-blue-600 hover:text-blue-900">
                               <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                             </button>
-                            <button className="text-green-600 hover:text-green-900">
+                            <button 
+                              onClick={() => handleStatusUpdate(booking.id, 'confirmed')}
+                              className="text-green-600 hover:text-green-900"
+                            >
                               <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
                             </button>
-                            <button className="text-red-600 hover:text-red-900">
+                            <button 
+                              onClick={() => handleStatusUpdate(booking.id, 'cancelled')}
+                              className="text-red-600 hover:text-red-900"
+                            >
                               <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                             </button>
                           </div>
@@ -635,10 +639,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
                       <div className="flex justify-between">
                         <span className="text-gray-600">Rating:</span>
                         <span className="font-medium">{tech.rating}/5.0</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Job Aktif:</span>
-                        <span className="font-medium">{tech.activeJobs}</span>
                       </div>
                     </div>
                     
