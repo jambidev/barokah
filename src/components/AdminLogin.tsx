@@ -144,6 +144,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
             <div className="text-xs text-blue-200 space-y-1">
               <p><strong>Username:</strong> admin</p>
               <p><strong>Password:</strong> barokah2025</p>
+              <p className="mt-2 text-blue-300"><strong>URL:</strong> /root_admin</p>
             </div>
           </div>
         </div>
@@ -151,6 +152,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
         {/* Footer */}
         <div className="text-center mt-6 text-blue-200 text-sm">
           <p>© 2025 Barokah Printer. All rights reserved.</p>
+          <p className="mt-1 text-xs">Akses admin melalui: <span className="font-mono">/root_admin</span></p>
         </div>
       </div>
     </div>

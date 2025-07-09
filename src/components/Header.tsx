@@ -78,6 +78,14 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
                 {item.name}
               </button>
             ))}
+            {/* Hidden Admin Link */}
+            <button
+              onClick={() => onNavigate('root_admin')}
+              className="hidden"
+              style={{ display: 'none' }}
+            >
+              Admin
+            </button>
           </nav>
 
           {/* Contact Info & CTA */}
