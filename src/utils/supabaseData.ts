@@ -65,6 +65,136 @@ export const fetchProblemCategories = async () => {
   }
 };
 
+// Add new printer brand
+export const addPrinterBrand = async (name: string) => {
+  try {
+    const { error } = await supabase
+      .from('printer_brands')
+      .insert({ name });
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error adding printer brand:', error);
+    throw error;
+  }
+};
+
+// Add new printer model
+export const addPrinterModel = async (brandId: string, name: string, type: string) => {
+  try {
+    const { error } = await supabase
+      .from('printer_models')
+      .insert({ brand_id: brandId, name, type });
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error adding printer model:', error);
+    throw error;
+  }
+};
+
+// Add new problem category
+export const addProblemCategory = async (name: string, icon: string) => {
+  try {
+    const { error } = await supabase
+      .from('problem_categories')
+      .insert({ name, icon });
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error adding problem category:', error);
+    throw error;
+  }
+};
+
+// Add new problem
+export const addProblem = async (categoryId: string, name: string, description: string, severity: string, estimatedTime: string, estimatedCost: string) => {
+  try {
+    const { error } = await supabase
+      .from('problems')
+      .insert({ 
+        category_id: categoryId, 
+        name, 
+        description, 
+        severity, 
+        estimated_time: estimatedTime, 
+        estimated_cost: estimatedCost 
+      });
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error adding problem:', error);
+    throw error;
+  }
+};
+
+// Update printer brand
+export const updatePrinterBrand = async (id: string, name: string) => {
+  try {
+    const { error } = await supabase
+      .from('printer_brands')
+      .update({ name })
+      .eq('id', id);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error updating printer brand:', error);
+    throw error;
+  }
+};
+
+// Update problem category
+export const updateProblemCategory = async (id: string, name: string, icon: string) => {
+  try {
+    const { error } = await supabase
+      .from('problem_categories')
+      .update({ name, icon })
+      .eq('id', id);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error updating problem category:', error);
+    throw error;
+  }
+};
+
+// Delete printer brand
+export const deletePrinterBrand = async (id: string) => {
+  try {
+    const { error } = await supabase
+      .from('printer_brands')
+      .update({ is_active: false })
+      .eq('id', id);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error deleting printer brand:', error);
+    throw error;
+  }
+};
+
+// Delete problem category
+export const deleteProblemCategory = async (id: string) => {
+  try {
+    const { error } = await supabase
+      .from('problem_categories')
+      .update({ is_active: false })
+      .eq('id', id);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error deleting problem category:', error);
+    throw error;
+  }
+};
 // Fetch technicians
 export const fetchTechnicians = async () => {
   try {

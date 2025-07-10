@@ -21,10 +21,24 @@ import {
   Wrench,
   Shield,
   Zap,
-  LogOut
+  LogOut,
+  Plus,
+  Save
 } from 'lucide-react';
 import { getAllBookings } from '../utils/bookingSupabase';
-import { fetchTechnicians, updateBookingStatus, assignTechnician } from '../utils/supabaseData';
+import { 
+  fetchTechnicians, 
+  updateBookingStatus, 
+  assignTechnician,
+  fetchPrinterBrands,
+  fetchProblemCategories,
+  addPrinterBrand,
+  addPrinterModel,
+  addProblemCategory,
+  addProblem,
+  updatePrinterBrand,
+  updateProblemCategory
+} from '../utils/supabaseData';
 
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
@@ -36,7 +50,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
   const [searchTerm, setSearchTerm] = useState('');
   const [bookings, setBookings] = useState<any[]>([]);
   const [technicians, setTechnicians] = useState<any[]>([]);
+  const [printerBrands, setPrinterBrands] = useState<any[]>([]);
+  const [problemCategories, setProblemCategories] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingItem, setEditingItem] = useState<any>(null);
   const [stats, setStats] = useState({
     totalBookings: 0,
     pendingBookings: 0,
@@ -50,13 +68,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [bookingsData, techniciansData] = await Promise.all([
+        const [bookingsData, techniciansData, brandsData, categoriesData] = await Promise.all([
           getAllBookings(),
-          fetchTechnicians()
+          fetchTechnicians(),
+          fetchPrinterBrands(),
+          fetchProblemCategories()
         ]);
         
         setBookings(bookingsData);
         setTechnicians(techniciansData);
+        setPrinterBrands(brandsData);
+        setProblemCategories(categoriesData);
         
         // Calculate stats
         const totalBookings = bookingsData.length;
@@ -82,6 +104,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
     loadData();
   }, []);
 
+  // Add new printer brand
+  const handleAddPrinterBrand = async (name: string) => {
+    try {
+      await addPrinterBrand(name);
+      const updatedBrands = await fetchPrinterBrands();
+      setPrinterBrands(updatedBrands);
+      setShowAddForm(false);
+    } catch (error) {
+      console.error('Error adding printer brand:', error);
+    }
+  };
+
+  // Add new problem category
+  const handleAddProblemCategory = async (name: string, icon: string) => {
+    try {
+      await addProblemCategory(name, icon);
+      const updatedCategories = await fetchProblemCategories();
+      setProblemCategories(updatedCategories);
+      setShowAddForm(false);
+    } catch (error) {
+      console.error('Error adding problem category:', error);
+    }
+  };
   // Service data
   const serviceCategories = {
     komputer: {
@@ -323,7 +368,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
               { id: 'overview', name: 'Overview', icon: BarChart3 },
               { id: 'bookings', name: 'Bookings', icon: Calendar },
               { id: 'technicians', name: 'Teknisi', icon: Users },
-              { id: 'services', name: 'Layanan Lengkap', icon: Wrench },
+              { id: 'printer-brands', name: 'Merk Printer', icon: Printer },
+              { id: 'problem-categories', name: 'Kategori Masalah', icon: Wrench },
               { id: 'reports', name: 'Laporan', icon: BarChart3 }
             ].map((tab) => (
               <button
@@ -671,122 +717,112 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
           </div>
         )}
 
-        {/* Services Tab */}
-        {activeTab === 'services' && (
+        {/* Printer Brands Tab */}
+        {activeTab === 'printer-brands' && (
           <div className="space-y-8">
-            <div className="bg-white rounded-lg shadow-md mobile-fade-left">
+            <div className="bg-white rounded-lg shadow-md">
               <div className="p-6 border-b border-gray-200">
-                <h2 className="text-2xl font-bold text-gray-900">Layanan Lengkap</h2>
-                <p className="text-gray-600 mt-2">Daftar lengkap layanan yang tersedia untuk Komputer, Laptop, dan Printer</p>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-900">Manajemen Merk Printer</h2>
+                    <p className="text-gray-600 mt-1">Kelola merk dan model printer yang didukung</p>
+                  </div>
+                  <button
+                    onClick={() => setShowAddForm(true)}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Tambah Merk</span>
+                  </button>
+                </div>
               </div>
-            </div>
-
-            {/* Service Categories */}
-            <div className="grid gap-8">
-              {Object.entries(serviceCategories).map(([key, category]) => {
-                const IconComponent = category.icon;
-                return (
-                  <div key={key} className="bg-white rounded-lg shadow-md overflow-hidden">
-                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6">
-                      <div className="flex items-center space-x-3">
-                        <div className="bg-white/20 p-3 rounded-lg">
-                          <IconComponent className="h-8 w-8 text-white" />
-                        </div>
-                        <div>
-                          <h3 className="text-2xl font-bold text-white">{category.title}</h3>
-                          <p className="text-blue-100">Layanan profesional dengan teknisi berpengalaman</p>
-                        </div>
+              
+              <div className="p-6">
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {printerBrands.map((brand) => (
+                    <div key={brand.id} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <h3 className="text-lg font-semibold">{brand.name}</h3>
+                        <button
+                          onClick={() => setEditingItem(brand)}
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
                       </div>
-                    </div>
-                    
-                    <div className="p-6">
-                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {category.services.map((service, index) => (
-                          <div key={index} className="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow">
-                            <div className="flex items-start justify-between mb-4">
-                              <div className="flex-1">
-                                <h4 className="text-lg font-semibold text-gray-900 mb-2">{service.name}</h4>
-                                <p className="text-gray-600 text-sm mb-3">{service.description}</p>
-                              </div>
-                            </div>
-                            
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-500">Harga:</span>
-                                <span className="font-bold text-blue-600">{service.price}</span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-500">Durasi:</span>
-                                <span className="font-medium text-gray-700">{service.duration}</span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm text-gray-500">Kategori:</span>
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                  service.category === 'Hardware' ? 'bg-red-100 text-red-800' :
-                                  service.category === 'Software' ? 'bg-blue-100 text-blue-800' :
-                                  service.category === 'Maintenance' ? 'bg-green-100 text-green-800' :
-                                  service.category === 'Security' ? 'bg-purple-100 text-purple-800' :
-                                  service.category === 'Recovery' ? 'bg-orange-100 text-orange-800' :
-                                  service.category === 'Network' ? 'bg-indigo-100 text-indigo-800' :
-                                  service.category === 'Consumable' ? 'bg-yellow-100 text-yellow-800' :
-                                  service.category === 'Repair' ? 'bg-pink-100 text-pink-800' :
-                                  'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {service.category}
-                                </span>
-                              </div>
-                            </div>
-                            
-                            <div className="mt-4 flex space-x-2">
-                              <button className="flex-1 bg-blue-600 text-white py-2 px-3 rounded-lg text-sm hover:bg-blue-700 transition-colors">
-                                <Edit className="h-4 w-4 inline mr-1" />
-                                Edit
-                              </button>
-                              <button className="bg-gray-200 text-gray-700 py-2 px-3 rounded-lg text-sm hover:bg-gray-300 transition-colors">
-                                <Eye className="h-4 w-4" />
-                              </button>
-                            </div>
+                      <p className="text-sm text-gray-600 mb-3">
+                        {brand.models?.length || 0} model tersedia
+                      </p>
+                      <div className="space-y-1">
+                        {brand.models?.slice(0, 3).map((model: any) => (
+                          <div key={model.id} className="text-xs bg-gray-100 px-2 py-1 rounded">
+                            {model.name} ({model.type})
                           </div>
                         ))}
-                      </div>
-                      
-                      <div className="mt-6 pt-6 border-t border-gray-200">
-                        <div className="flex justify-between items-center">
-                          <div className="text-sm text-gray-600">
-                            Total {category.services.length} layanan tersedia
+                        {brand.models?.length > 3 && (
+                          <div className="text-xs text-gray-500">
+                            +{brand.models.length - 3} model lainnya
                           </div>
-                          <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-                            Tambah Layanan Baru
-                          </button>
-                        </div>
+                        )}
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  ))}
+                </div>
+              </div>
             </div>
-            
-            {/* Service Summary */}
-            <div className="bg-white rounded-lg shadow-md p-6 mobile-fade-left">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">Ringkasan Layanan</h3>
-              <div className="grid md:grid-cols-3 gap-6">
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <Monitor className="h-12 w-12 text-blue-600 mx-auto mb-2" />
-                  <h4 className="font-semibold text-gray-900">Komputer</h4>
-                  <p className="text-2xl font-bold text-blue-600">{serviceCategories.komputer.services.length}</p>
-                  <p className="text-sm text-gray-600">Layanan</p>
+          </div>
+        )}
+
+        {/* Problem Categories Tab */}
+        {activeTab === 'problem-categories' && (
+          <div className="space-y-8">
+            <div className="bg-white rounded-lg shadow-md">
+              <div className="p-4 sm:p-6 border-b border-gray-200">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-900">Manajemen Kategori Masalah</h2>
+                    <p className="text-gray-600 mt-1">Kelola kategori dan jenis masalah printer</p>
+                  </div>
+                  <button
+                    onClick={() => setShowAddForm(true)}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Tambah Kategori</span>
+                  </button>
                 </div>
-                <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <Laptop className="h-12 w-12 text-green-600 mx-auto mb-2" />
-                  <h4 className="font-semibold text-gray-900">Laptop</h4>
-                  <p className="text-2xl font-bold text-green-600">{serviceCategories.laptop.services.length}</p>
-                  <p className="text-sm text-gray-600">Layanan</p>
-                </div>
-                <div className="text-center p-4 bg-purple-50 rounded-lg">
-                  <Printer className="h-12 w-12 text-purple-600 mx-auto mb-2" />
-                  <h4 className="font-semibold text-gray-900">Printer</h4>
-                  <p className="text-2xl font-bold text-purple-600">{serviceCategories.printer.services.length}</p>
-                  <p className="text-sm text-gray-600">Layanan</p>
+              </div>
+              
+              <div className="p-6">
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {problemCategories.map((category) => (
+                    <div key={category.id} className="border rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-3">
+                        <h3 className="text-lg font-semibold">{category.name}</h3>
+                        <button
+                          onClick={() => setEditingItem(category)}
+                          className="text-blue-600 hover:text-blue-800"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-3">
+                        {category.problems?.length || 0} masalah terdaftar
+                      </p>
+                      <div className="space-y-1">
+                        {category.problems?.slice(0, 3).map((problem: any) => (
+                          <div key={problem.id} className="text-xs bg-gray-100 px-2 py-1 rounded">
+                            {problem.name}
+                          </div>
+                        ))}
+                        {category.problems?.length > 3 && (
+                          <div className="text-xs text-gray-500">
+                            +{category.problems.length - 3} masalah lainnya
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -866,6 +902,72 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
           </div>
         )}
       </div>
+
+      {/* Add/Edit Modal */}
+      {showAddForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">
+              {activeTab === 'printer-brands' ? 'Tambah Merk Printer' : 'Tambah Kategori Masalah'}
+            </h3>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target as HTMLFormElement);
+              const name = formData.get('name') as string;
+              const icon = formData.get('icon') as string;
+              
+              if (activeTab === 'printer-brands') {
+                handleAddPrinterBrand(name);
+              } else {
+                handleAddProblemCategory(name, icon || 'Wrench');
+              }
+            }}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Nama {activeTab === 'printer-brands' ? 'Merk' : 'Kategori'}
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder={activeTab === 'printer-brands' ? 'Contoh: Canon' : 'Contoh: Masalah Pencetakan'}
+                  />
+                </div>
+                {activeTab === 'problem-categories' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Icon (Lucide Icon Name)
+                    </label>
+                    <input
+                      type="text"
+                      name="icon"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Contoh: Printer, Wrench, Settings"
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="flex space-x-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowAddForm(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                >
+                  Simpan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
