@@ -95,6 +95,15 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
               <span className="font-medium">+62853-6814-8449</span>
             </div>
             <button
+              onClick={() => onNavigate('admin')}
+              className="bg-gray-600 text-white p-2 rounded-md hover:bg-gray-700 transition-colors flex items-center justify-center card-hover-scale"
+              title="Admin Login"
+            >
+              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
+              </svg>
+            </button>
+            <button
               onClick={() => onNavigate('booking')}
               className="bg-blue-600 text-white px-2 md:px-3 lg:px-4 py-1.5 md:py-2 rounded-md hover:bg-blue-700 transition-colors font-medium text-xs md:text-sm shadow-md hover:shadow-lg"
             >
@@ -138,6 +147,18 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
                   <Phone className="h-4 w-4 sm:h-5 sm:w-5" />
                   <span className="font-medium">+62853-6814-8449</span>
                 </div>
+                <button
+                  onClick={() => {
+                    onNavigate('admin');
+                    setIsMenuOpen(false);
+                  }}
+                  className="w-full bg-gray-600 text-white px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg hover:bg-gray-700 transition-colors font-semibold text-sm sm:text-base shadow-md hover:shadow-lg flex items-center justify-center space-x-2"
+                >
+                  <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
+                  </svg>
+                  <span>Admin Login</span>
+                </button>
                 <button
                   onClick={() => {
                     onNavigate('booking');
