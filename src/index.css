@@ -4,6 +4,38 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Fix hosting display issues */
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+}
+
+body {
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure consistent sizing across browsers */
+* {
+  box-sizing: border-box;
+}
+
+/* Fix viewport scaling issues */
+@media screen and (max-width: 768px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  html {
+    font-size: 13px;
+  }
+}
+
 @keyframes pulse-rotate {
   0%, 100% {
     transform: scale(1) rotate(0deg);
