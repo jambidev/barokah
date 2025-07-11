@@ -195,6 +195,60 @@ export const deleteProblemCategory = async (id: string) => {
     throw error;
   }
 };
+
+// Add new technician
+export const addTechnician = async (data: {
+  name: string;
+  phone: string;
+  email?: string;
+  specialization: string[];
+  experience: number;
+  rating: number;
+}) => {
+  try {
+    const { error } = await supabase
+      .from('technicians')
+      .insert(data);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error adding technician:', error);
+    throw error;
+  }
+};
+
+// Update technician
+export const updateTechnician = async (id: string, data: any) => {
+  try {
+    const { error } = await supabase
+      .from('technicians')
+      .update(data)
+      .eq('id', id);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error updating technician:', error);
+    throw error;
+  }
+};
+
+// Delete technician (soft delete)
+export const deleteTechnician = async (id: string) => {
+  try {
+    const { error } = await supabase
+      .from('technicians')
+      .update({ is_active: false })
+      .eq('id', id);
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error deleting technician:', error);
+    throw error;
+  }
+};
 // Fetch technicians
 export const fetchTechnicians = async () => {
   try {

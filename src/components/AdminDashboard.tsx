@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { 
   BarChart3, 
   Users, 
@@ -23,7 +23,8 @@ import {
   Zap,
   LogOut,
   Plus,
-  Save
+  Save,
+  X
 } from 'lucide-react';
 import { getAllBookings } from '../utils/bookingSupabase';
 import { 
@@ -39,6 +40,7 @@ import {
   updatePrinterBrand,
   updateProblemCategory
 } from '../utils/supabaseData';
+import NotificationSystem from './NotificationSystem';
 
 interface AdminDashboardProps {
   onNavigate: (page: string) => void;
@@ -55,6 +57,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
   const [isLoading, setIsLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
+  const [editingType, setEditingType] = useState<'brand' | 'category' | 'technician' | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [stats, setStats] = useState({
     totalBookings: 0,
     pendingBookings: 0,
@@ -63,6 +68,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
     thisMonthRevenue: 0,
     activeTechnicians: 0
   });
+
+  const prevBookingsLength = useRef(0);
 
   // Load data from Supabase
   useEffect(() => {
@@ -94,6 +101,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
           thisMonthRevenue: completedBookings * 50000, // Estimate
           activeTechnicians
         });
+
+        // Check for new bookings and send notifications
+        if (prevBookingsLength.current > 0 && bookingsData.length > prevBookingsLength.current) {
+          const newBookings = bookingsData.slice(0, bookingsData.length - prevBookingsLength.current);
+          newBookings.forEach(booking => {
+            // Add notification to dashboard
+            setNotifications(prev => [...prev, {
+              id: Date.now(),
+              message: `Booking baru dari ${booking.customer.name} - ${booking.id}`,
+              timestamp: new Date().toISOString()
+            }]);
+          });
+        }
+        prevBookingsLength.current = bookingsData.length;
       } catch (error) {
         console.error('Error loading dashboard data:', error);
       } finally {
@@ -102,6 +123,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
     };
 
     loadData();
+  }, []);
+
+  // Auto-refresh data every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      window.location.reload();
+    }, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   // Add new printer brand
@@ -127,6 +156,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
       console.error('Error adding problem category:', error);
     }
   };
+
+  // Add new technician
+  const handleAddTechnician = async (data: any) => {
+    try {
+      await supabase.from('technicians').insert({
+        name: data.name,
+        phone: data.phone,
+        email: data.email,
+        specialization: data.specialization,
+        experience: parseInt(data.experience),
+        rating: parseFloat(data.rating) || 0
+      });
+      const updatedTechnicians = await fetchTechnicians();
+      setTechnicians(updatedTechnicians);
+      setShowAddForm(false);
+    } catch (error) {
+      console.error('Error adding technician:', error);
+    }
+  };
+  
   // Service data
   const serviceCategories = {
     komputer: {
@@ -334,6 +383,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <NotificationSystem notifications={notifications} />
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -345,8 +395,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
             <div className="flex items-center space-x-2 sm:space-x-4">
               <button className="p-2 text-gray-400 hover:text-gray-600">
                 <Bell className="h-5 w-5 sm:h-6 sm:w-6" />
+                {notifications.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {notifications.length}
+                  </span>
+                )}
               </button>
-              <button className="p-2 text-gray-400 hover:text-gray-600">
+              <button onClick={() => setShowSettings(true)} className="p-2 text-gray-400 hover:text-gray-600">
                 <Settings className="h-5 w-5 sm:h-6 sm:w-6" />
               </button>
               <button 
@@ -370,6 +425,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
               { id: 'technicians', name: 'Teknisi', icon: Users },
               { id: 'printer-brands', name: 'Merk Printer', icon: Printer },
               { id: 'problem-categories', name: 'Kategori Masalah', icon: Wrench },
+              { id: 'settings', name: 'Pengaturan', icon: Settings },
               { id: 'reports', name: 'Laporan', icon: BarChart3 }
             ].map((tab) => (
               <button
@@ -654,8 +710,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
               <div className="p-4 sm:p-6 border-b border-gray-200">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                   <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Manajemen Teknisi</h2>
-                  <button className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 text-sm sm:text-base">
-                    Tambah Teknisi
+                  <button
+                    onClick={() => setShowAddForm(true)}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Tambah</span>
                   </button>
                 </div>
               </div>
@@ -669,11 +729,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
                         <p className="text-xs sm:text-sm text-gray-600">{tech.phone}</p>
                       </div>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        tech.status === 'available' 
+                        tech.is_available 
                           ? 'bg-green-100 text-green-800' 
                           : 'bg-red-100 text-red-800'
                       }`}>
-                        {tech.status === 'available' ? 'Tersedia' : 'Sibuk'}
+                        {tech.is_available ? 'Tersedia' : 'Sibuk'}
                       </span>
                     </div>
                     
@@ -829,6 +889,93 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
           </div>
         )}
 
+        {/* Settings Tab */}
+        {activeTab === 'settings' && (
+          <div className="space-y-8">
+            <div className="bg-white rounded-lg shadow-md">
+              <div className="p-6 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-900">Pengaturan Sistem</h2>
+                <p className="text-gray-600 mt-1">Kelola pengaturan aplikasi dan notifikasi</p>
+              </div>
+              
+              <div className="p-6 space-y-6">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="border rounded-lg p-4">
+                    <h3 className="text-lg font-semibold mb-4">Notifikasi WhatsApp</h3>
+                    <div className="space-y-3">
+                      <label className="flex items-center">
+                        <input type="checkbox" className="mr-2" defaultChecked />
+                        <span>Notifikasi booking baru</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input type="checkbox" className="mr-2" defaultChecked />
+                        <span>Update status service</span>
+                      </label>
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium mb-2">Nomor WhatsApp Admin:</label>
+                        <input 
+                          type="text" 
+                          defaultValue="+62853-6814-8449"
+                          className="w-full px-3 py-2 border rounded-lg"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border rounded-lg p-4">
+                    <h3 className="text-lg font-semibold mb-4">Pengaturan Umum</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Nama Toko:</label>
+                        <input 
+                          type="text" 
+                          defaultValue="Barokah Printer"
+                          className="w-full px-3 py-2 border rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Email:</label>
+                        <input 
+                          type="email" 
+                          defaultValue="barokahprint22@gmail.com"
+                          className="w-full px-3 py-2 border rounded-lg"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-2">Alamat:</label>
+                        <textarea 
+                          defaultValue="Jl. Depati Parbo No.rt 17, Pematang Sulur, Kec. Telanaipura, Kota Jambi"
+                          className="w-full px-3 py-2 border rounded-lg"
+                          rows={3}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg p-4">
+                  <h3 className="text-lg font-semibold mb-4">Backup & Restore</h3>
+                  <div className="flex space-x-4">
+                    <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                      Backup Data
+                    </button>
+                    <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                      Export Laporan
+                    </button>
+                    <button className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700">
+                      Import Data
+                    </button>
+                  </div>
+                </div>
+
+                <button className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-medium">
+                  Simpan Pengaturan
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Reports Tab */}
         {activeTab === 'reports' && (
           <div className="space-y-6">
@@ -851,7 +998,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600 text-sm sm:text-base">Rata-rata per Service:</span>
                     <span className="font-medium text-sm sm:text-base">
-                      {formatCurrency(stats.totalRevenue / stats.completedBookings)}
+                      {formatCurrency(stats.completedBookings > 0 ? stats.totalRevenue / stats.completedBookings : 0)}
                     </span>
                   </div>
                 </div>
@@ -863,7 +1010,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600 text-sm sm:text-base">Completion Rate:</span>
                     <span className="text-base sm:text-xl font-semibold text-green-600">
-                      {Math.round((stats.completedBookings / stats.totalBookings) * 100)}%
+                      {stats.totalBookings > 0 ? Math.round((stats.completedBookings / stats.totalBookings) * 100) : 0}%
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
@@ -874,6 +1021,80 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
                     <span className="text-gray-600 text-sm sm:text-base">Response Time:</span>
                     <span className="font-medium text-sm sm:text-base">&lt; 2 jam</span>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Real-time Transaction Report */}
+            <div className="bg-white rounded-lg shadow-md">
+              <div className="p-4 sm:p-6 border-b border-gray-200">
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Laporan Transaksi Real-time</h3>
+                <p className="text-gray-600 mt-1">Data transaksi terbaru dan analisis performa</p>
+              </div>
+              
+              <div className="p-4 sm:p-6">
+                <div className="grid md:grid-cols-3 gap-6 mb-6">
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <h4 className="font-semibold text-blue-900">Hari Ini</h4>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {bookings.filter(b => new Date(b.createdAt).toDateString() === new Date().toDateString()).length}
+                    </p>
+                    <p className="text-sm text-blue-700">Booking baru</p>
+                  </div>
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <h4 className="font-semibold text-green-900">Minggu Ini</h4>
+                    <p className="text-2xl font-bold text-green-600">
+                      {bookings.filter(b => {
+                        const bookingDate = new Date(b.createdAt);
+                        const weekAgo = new Date();
+                        weekAgo.setDate(weekAgo.getDate() - 7);
+                        return bookingDate >= weekAgo;
+                      }).length}
+                    </p>
+                    <p className="text-sm text-green-700">Total booking</p>
+                  </div>
+                  <div className="bg-yellow-50 p-4 rounded-lg">
+                    <h4 className="font-semibold text-yellow-900">Pending</h4>
+                    <p className="text-2xl font-bold text-yellow-600">{stats.pendingBookings}</p>
+                    <p className="text-sm text-yellow-700">Menunggu konfirmasi</p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Waktu</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Service</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Revenue</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {bookings.slice(0, 10).map((booking) => (
+                        <tr key={booking.id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {new Date(booking.createdAt).toLocaleString('id-ID')}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {booking.customer.name}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {booking.printer.brand} - {booking.problem.category}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(booking.status)}`}>
+                              {booking.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {booking.actualCost || booking.estimatedCost}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -906,35 +1127,105 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
       {/* Add/Edit Modal */}
       {showAddForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold mb-4">
-              {activeTab === 'printer-brands' ? 'Tambah Merk Printer' : 'Tambah Kategori Masalah'}
+              {activeTab === 'printer-brands' ? 'Tambah Merk Printer' : 
+               activeTab === 'problem-categories' ? 'Tambah Kategori Masalah' : 'Tambah Teknisi'}
             </h3>
             <form onSubmit={(e) => {
               e.preventDefault();
               const formData = new FormData(e.target as HTMLFormElement);
-              const name = formData.get('name') as string;
-              const icon = formData.get('icon') as string;
               
               if (activeTab === 'printer-brands') {
+                const name = formData.get('name') as string;
                 handleAddPrinterBrand(name);
-              } else {
+              } else if (activeTab === 'problem-categories') {
+                const name = formData.get('name') as string;
+                const icon = formData.get('icon') as string;
                 handleAddProblemCategory(name, icon || 'Wrench');
+              } else if (activeTab === 'technicians') {
+                const data = {
+                  name: formData.get('name') as string,
+                  phone: formData.get('phone') as string,
+                  email: formData.get('email') as string,
+                  specialization: (formData.get('specialization') as string).split(',').map(s => s.trim()),
+                  experience: formData.get('experience') as string,
+                  rating: formData.get('rating') as string
+                };
+                handleAddTechnician(data);
               }
             }}>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nama {activeTab === 'printer-brands' ? 'Merk' : 'Kategori'}
+                    Nama {activeTab === 'printer-brands' ? 'Merk' : 
+                          activeTab === 'problem-categories' ? 'Kategori' : 'Teknisi'}
                   </label>
                   <input
                     type="text"
                     name="name"
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder={activeTab === 'printer-brands' ? 'Contoh: Canon' : 'Contoh: Masalah Pencetakan'}
+                    placeholder={activeTab === 'printer-brands' ? 'Contoh: Canon' : 
+                                activeTab === 'problem-categories' ? 'Contoh: Masalah Pencetakan' : 'Contoh: Budi Santoso'}
                   />
                 </div>
+                
+                {activeTab === 'technicians' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nomor HP</label>
+                      <input
+                        type="tel"
+                        name="phone"
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="+62853-6814-8449"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                      <input
+                        type="email"
+                        name="email"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="teknisi@example.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Spesialisasi (pisahkan dengan koma)</label>
+                      <input
+                        type="text"
+                        name="specialization"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Canon, Epson, HP"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Pengalaman (tahun)</label>
+                      <input
+                        type="number"
+                        name="experience"
+                        min="0"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="5"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Rating (1-5)</label>
+                      <input
+                        type="number"
+                        name="rating"
+                        min="1"
+                        max="5"
+                        step="0.1"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="4.5"
+                      />
+                    </div>
+                  </>
+                )}
+                
                 {activeTab === 'problem-categories' && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -965,6 +1256,73 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Pengaturan Sistem</h3>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              <div>
+                <h4 className="font-semibold mb-3">Notifikasi</h4>
+                <div className="space-y-2">
+                  <label className="flex items-center">
+                    <input type="checkbox" className="mr-2" defaultChecked />
+                    <span>Notifikasi booking baru</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input type="checkbox" className="mr-2" defaultChecked />
+                    <span>Update status service</span>
+                  </label>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-semibold mb-3">Kontak</h4>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">WhatsApp Admin:</label>
+                    <input 
+                      type="text" 
+                      defaultValue="+62853-6814-8449"
+                      className="w-full px-3 py-2 border rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Email:</label>
+                    <input 
+                      type="email" 
+                      defaultValue="barokahprint22@gmail.com"
+                      className="w-full px-3 py-2 border rounded-lg"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={() => setShowSettings(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Batal
+              </button>
+              <button className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                Simpan
+              </button>
+            </div>
           </div>
         </div>
       )}
