@@ -60,6 +60,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
   const [editingType, setEditingType] = useState<'brand' | 'category' | 'technician' | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [editingTechnician, setEditingTechnician] = useState<any>(null);
+  const [editingBrand, setEditingBrand] = useState<any>(null);
+  const [editingCategory, setEditingCategory] = useState<any>(null);
   const [stats, setStats] = useState({
     totalBookings: 0,
     pendingBookings: 0,
@@ -136,7 +139,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
   // Add new printer brand
   const handleAddPrinterBrand = async (name: string) => {
     try {
-      await addPrinterBrand(name);
+      if (editingBrand) {
+        await updatePrinterBrand(editingBrand.id, name);
+        setEditingBrand(null);
+      } else {
+        await addPrinterBrand(name);
+      }
       const updatedBrands = await fetchPrinterBrands();
       setPrinterBrands(updatedBrands);
       setShowAddForm(false);
@@ -148,7 +156,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
   // Add new problem category
   const handleAddProblemCategory = async (name: string, icon: string) => {
     try {
-      await addProblemCategory(name, icon);
+      if (editingCategory) {
+        await updateProblemCategory(editingCategory.id, name, icon);
+        setEditingCategory(null);
+      } else {
+        await addProblemCategory(name, icon);
+      }
       const updatedCategories = await fetchProblemCategories();
       setProblemCategories(updatedCategories);
       setShowAddForm(false);
@@ -160,19 +173,77 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
   // Add new technician
   const handleAddTechnician = async (data: any) => {
     try {
-      await supabase.from('technicians').insert({
-        name: data.name,
-        phone: data.phone,
-        email: data.email,
-        specialization: data.specialization,
-        experience: parseInt(data.experience),
-        rating: parseFloat(data.rating) || 0
-      });
+      if (editingTechnician) {
+        await supabase.from('technicians').update({
+          name: data.name,
+          phone: data.phone,
+          email: data.email,
+          specialization: data.specialization,
+          experience: parseInt(data.experience),
+          rating: parseFloat(data.rating) || 0,
+          schedule: data.schedule
+        }).eq('id', editingTechnician.id);
+        setEditingTechnician(null);
+      } else {
+        await supabase.from('technicians').insert({
+          name: data.name,
+          phone: data.phone,
+          email: data.email,
+          specialization: data.specialization,
+          experience: parseInt(data.experience),
+          rating: parseFloat(data.rating) || 0,
+          schedule: data.schedule
+        });
+      }
       const updatedTechnicians = await fetchTechnicians();
       setTechnicians(updatedTechnicians);
       setShowAddForm(false);
     } catch (error) {
       console.error('Error adding technician:', error);
+    }
+  };
+
+  const handleEditTechnician = (technician: any) => {
+    setEditingTechnician(technician);
+    setEditingType('technician');
+    setShowAddForm(true);
+  };
+
+  const handleDeleteTechnician = async (id: string) => {
+    if (window.confirm('Apakah Anda yakin ingin menghapus teknisi ini?')) {
+      try {
+        await supabase.from('technicians').delete().eq('id', id);
+        const updatedTechnicians = await fetchTechnicians();
+        setTechnicians(updatedTechnicians);
+        alert('Teknisi berhasil dihapus');
+      } catch (error) {
+        alert('Gagal menghapus teknisi');
+      }
+    }
+  };
+
+  const handleEditBrand = (brand: any) => {
+    setEditingBrand(brand);
+    setEditingType('brand');
+    setShowAddForm(true);
+  };
+
+  const handleEditCategory = (category: any) => {
+    setEditingCategory(category);
+    setEditingType('category');
+    setShowAddForm(true);
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    if (window.confirm('Apakah Anda yakin ingin menghapus kategori ini?')) {
+      try {
+        await supabase.from('problem_categories').delete().eq('id', id);
+        const updatedCategories = await fetchProblemCategories();
+        setProblemCategories(updatedCategories);
+        alert('Kategori berhasil dihapus');
+      } catch (error) {
+        alert('Gagal menghapus kategori');
+      }
     }
   };
   
@@ -763,11 +834,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
                     </div>
                     
                     <div className="mt-4 flex space-x-2">
-                      <button className="flex-1 bg-blue-600 text-white py-2 px-2 sm:px-3 rounded text-xs sm:text-sm hover:bg-blue-700">
+                      <button 
+                        onClick={() => handleEditTechnician(tech)}
+                        className="flex-1 bg-blue-600 text-white py-2 px-2 sm:px-3 rounded text-xs sm:text-sm hover:bg-blue-700"
+                      >
                         Edit
                       </button>
-                      <button className="bg-gray-200 text-gray-700 py-2 px-2 sm:px-3 rounded text-xs sm:text-sm hover:bg-gray-300">
-                        Jadwal
+                      <button 
+                        onClick={() => handleDeleteTechnician(tech.id)}
+                        className="bg-red-600 text-white py-2 px-2 sm:px-3 rounded text-xs sm:text-sm hover:bg-red-700"
+                      >
+                        Hapus
                       </button>
                     </div>
                   </div>
@@ -804,7 +881,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
                       <div className="flex justify-between items-start mb-3">
                         <h3 className="text-lg font-semibold">{brand.name}</h3>
                         <button
-                          onClick={() => setEditingItem(brand)}
+                          onClick={() => handleEditBrand(brand)}
                           className="text-blue-600 hover:text-blue-800"
                         >
                           <Edit className="h-4 w-4" />
@@ -859,12 +936,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
                     <div key={category.id} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start mb-3">
                         <h3 className="text-lg font-semibold">{category.name}</h3>
-                        <button
-                          onClick={() => setEditingItem(category)}
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleEditCategory(category)}
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCategory(category.id)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                       <p className="text-sm text-gray-600 mb-3">
                         {category.problems?.length || 0} masalah terdaftar
@@ -1029,305 +1114,4 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
             <div className="bg-white rounded-lg shadow-md">
               <div className="p-4 sm:p-6 border-b border-gray-200">
                 <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Laporan Transaksi Real-time</h3>
-                <p className="text-gray-600 mt-1">Data transaksi terbaru dan analisis performa</p>
-              </div>
-              
-              <div className="p-4 sm:p-6">
-                <div className="grid md:grid-cols-3 gap-6 mb-6">
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <h4 className="font-semibold text-blue-900">Hari Ini</h4>
-                    <p className="text-2xl font-bold text-blue-600">
-                      {bookings.filter(b => new Date(b.createdAt).toDateString() === new Date().toDateString()).length}
-                    </p>
-                    <p className="text-sm text-blue-700">Booking baru</p>
-                  </div>
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <h4 className="font-semibold text-green-900">Minggu Ini</h4>
-                    <p className="text-2xl font-bold text-green-600">
-                      {bookings.filter(b => {
-                        const bookingDate = new Date(b.createdAt);
-                        const weekAgo = new Date();
-                        weekAgo.setDate(weekAgo.getDate() - 7);
-                        return bookingDate >= weekAgo;
-                      }).length}
-                    </p>
-                    <p className="text-sm text-green-700">Total booking</p>
-                  </div>
-                  <div className="bg-yellow-50 p-4 rounded-lg">
-                    <h4 className="font-semibold text-yellow-900">Pending</h4>
-                    <p className="text-2xl font-bold text-yellow-600">{stats.pendingBookings}</p>
-                    <p className="text-sm text-yellow-700">Menunggu konfirmasi</p>
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Waktu</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Service</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Revenue</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {bookings.slice(0, 10).map((booking) => (
-                        <tr key={booking.id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {new Date(booking.createdAt).toLocaleString('id-ID')}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {booking.customer.name}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {booking.printer.brand} - {booking.problem.category}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(booking.status)}`}>
-                              {booking.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {booking.actualCost || booking.estimatedCost}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-md mobile-fade-left">
-              <div className="p-4 sm:p-6 border-b border-gray-200">
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Export Reports</h3>
-              </div>
-              <div className="p-4 sm:p-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-                  <button className="flex items-center justify-center p-3 sm:p-4 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm sm:text-base">
-                    <Download className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2 text-gray-600" />
-                    <span>Export Bookings</span>
-                  </button>
-                  <button className="flex items-center justify-center p-3 sm:p-4 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm sm:text-base">
-                    <Download className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2 text-gray-600" />
-                    <span>Export Revenue</span>
-                  </button>
-                  <button className="flex items-center justify-center p-3 sm:p-4 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm sm:text-base">
-                    <Download className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2 text-gray-600" />
-                    <span>Export Technicians</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Add/Edit Modal */}
-      {showAddForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-semibold mb-4">
-              {activeTab === 'printer-brands' ? 'Tambah Merk Printer' : 
-               activeTab === 'problem-categories' ? 'Tambah Kategori Masalah' : 'Tambah Teknisi'}
-            </h3>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              const formData = new FormData(e.target as HTMLFormElement);
-              
-              if (activeTab === 'printer-brands') {
-                const name = formData.get('name') as string;
-                handleAddPrinterBrand(name);
-              } else if (activeTab === 'problem-categories') {
-                const name = formData.get('name') as string;
-                const icon = formData.get('icon') as string;
-                handleAddProblemCategory(name, icon || 'Wrench');
-              } else if (activeTab === 'technicians') {
-                const data = {
-                  name: formData.get('name') as string,
-                  phone: formData.get('phone') as string,
-                  email: formData.get('email') as string,
-                  specialization: (formData.get('specialization') as string).split(',').map(s => s.trim()),
-                  experience: formData.get('experience') as string,
-                  rating: formData.get('rating') as string
-                };
-                handleAddTechnician(data);
-              }
-            }}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nama {activeTab === 'printer-brands' ? 'Merk' : 
-                          activeTab === 'problem-categories' ? 'Kategori' : 'Teknisi'}
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder={activeTab === 'printer-brands' ? 'Contoh: Canon' : 
-                                activeTab === 'problem-categories' ? 'Contoh: Masalah Pencetakan' : 'Contoh: Budi Santoso'}
-                  />
-                </div>
-                
-                {activeTab === 'technicians' && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Nomor HP</label>
-                      <input
-                        type="tel"
-                        name="phone"
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="+62853-6814-8449"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                      <input
-                        type="email"
-                        name="email"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="teknisi@example.com"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Spesialisasi (pisahkan dengan koma)</label>
-                      <input
-                        type="text"
-                        name="specialization"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Canon, Epson, HP"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Pengalaman (tahun)</label>
-                      <input
-                        type="number"
-                        name="experience"
-                        min="0"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="5"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Rating (1-5)</label>
-                      <input
-                        type="number"
-                        name="rating"
-                        min="1"
-                        max="5"
-                        step="0.1"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="4.5"
-                      />
-                    </div>
-                  </>
-                )}
-                
-                {activeTab === 'problem-categories' && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Icon (Lucide Icon Name)
-                    </label>
-                    <input
-                      type="text"
-                      name="icon"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Contoh: Printer, Wrench, Settings"
-                    />
-                  </div>
-                )}
-              </div>
-              <div className="flex space-x-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowAddForm(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-                >
-                  Simpan
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Settings Modal */}
-      {showSettings && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Pengaturan Sistem</h3>
-              <button
-                onClick={() => setShowSettings(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-            
-            <div className="space-y-6">
-              <div>
-                <h4 className="font-semibold mb-3">Notifikasi</h4>
-                <div className="space-y-2">
-                  <label className="flex items-center">
-                    <input type="checkbox" className="mr-2" defaultChecked />
-                    <span>Notifikasi booking baru</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input type="checkbox" className="mr-2" defaultChecked />
-                    <span>Update status service</span>
-                  </label>
-                </div>
-              </div>
-              
-              <div>
-                <h4 className="font-semibold mb-3">Kontak</h4>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">WhatsApp Admin:</label>
-                    <input 
-                      type="text" 
-                      defaultValue="+62853-6814-8449"
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Email:</label>
-                    <input 
-                      type="email" 
-                      defaultValue="barokahprint22@gmail.com"
-                      className="w-full px-3 py-2 border rounded-lg"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex space-x-3 mt-6">
-              <button
-                onClick={() => setShowSettings(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                Batal
-              </button>
-              <button className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-                Simpan
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default AdminDashboard;
+                <p className="text-gray-600 mt-1">Data transaksi terbaru dan analisis per
