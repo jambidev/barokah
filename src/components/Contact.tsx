@@ -77,6 +77,7 @@ const Contact: React.FC<ContactProps> = ({ onNavigate }) => {
     'Reset Printer Error',
     'Instalasi Driver & Software',
     'Konsultasi Gratis'
+  ];
 
   const serviceAreas = [
     'Kota Jambi', 'Muaro Jambi', 'Batanghari', 'Tanjab Timur', 'Tanjab Barat',
