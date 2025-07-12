@@ -53,6 +53,8 @@ export interface BookingData {
 
 export const saveBookingToSupabase = async (formData: BookingFormData): Promise<string> => {
   try {
+    console.log('Starting booking save process...', formData);
+    
     // First, create or get customer
     const { data: existingCustomer } = await supabase
       .from('customers')
@@ -64,6 +66,7 @@ export const saveBookingToSupabase = async (formData: BookingFormData): Promise<
 
     if (existingCustomer) {
       customerId = existingCustomer.id;
+      console.log('Found existing customer:', customerId);
       // Update customer info
       await supabase
         .from('customers')
@@ -74,6 +77,7 @@ export const saveBookingToSupabase = async (formData: BookingFormData): Promise<
         })
         .eq('id', customerId);
     } else {
+      console.log('Creating new customer...');
       // Create new customer
       const { data: newCustomer, error: customerError } = await supabase
         .from('customers')
@@ -88,21 +92,25 @@ export const saveBookingToSupabase = async (formData: BookingFormData): Promise<
 
       if (customerError) throw customerError;
       customerId = newCustomer.id;
+      console.log('Created new customer:', customerId);
     }
 
     // Get printer brand and model IDs
+    console.log('Looking up printer brand:', formData.printerBrand);
     const { data: brand } = await supabase
       .from('printer_brands')
       .select('id')
       .eq('name', formData.printerBrand)
       .single();
 
+    console.log('Looking up printer model:', formData.printerModel);
     const { data: model } = await supabase
       .from('printer_models')
       .select('id')
       .eq('name', formData.printerModel)
       .single();
 
+    console.log('Looking up problem category:', formData.problemCategory);
     const { data: category } = await supabase
       .from('problem_categories')
       .select('id')
@@ -110,6 +118,7 @@ export const saveBookingToSupabase = async (formData: BookingFormData): Promise<
       .single();
 
     // Get available technician
+    console.log('Looking up available technician...');
     const { data: technician } = await supabase
       .from('technicians')
       .select('id')
@@ -118,30 +127,40 @@ export const saveBookingToSupabase = async (formData: BookingFormData): Promise<
       .limit(1)
       .single();
 
+    console.log('Found technician:', technician?.id);
+
     // Create booking
+    const bookingData = {
+      customer_id: customerId,
+      printer_brand_id: brand?.id,
+      printer_model_id: model?.id,
+      problem_category_id: category?.id,
+      problem_description: formData.problemDescription,
+      service_type: 'Antar ke Toko',
+      appointment_date: formData.appointmentDate,
+      appointment_time: formData.appointmentTime,
+      technician_id: technician?.id,
+      notes: formData.notes,
+      estimated_cost: calculateEstimatedCost(formData.problemCategory)
+    };
+    
+    console.log('Creating booking with data:', bookingData);
+    
     const { data: booking, error: bookingError } = await supabase
       .from('service_bookings')
-      .insert({
-        customer_id: customerId,
-        printer_brand_id: brand?.id,
-        printer_model_id: model?.id,
-        problem_category_id: category?.id,
-        problem_description: formData.problemDescription,
-        service_type: formData.serviceType === 'bring-to-shop' ? 'Antar ke Toko' : 'Teknisi Datang',
-        appointment_date: formData.appointmentDate,
-        appointment_time: formData.appointmentTime,
-        technician_id: technician?.id,
-        notes: formData.notes,
-        estimated_cost: calculateEstimatedCost(formData.problemCategory)
-      })
+      .insert(bookingData)
       .select('id')
       .single();
 
-    if (bookingError) throw bookingError;
+    if (bookingError) {
+      console.error('Booking creation error:', bookingError);
+      throw bookingError;
+    }
 
+    console.log('Booking created successfully:', booking.id);
     return booking.id;
   } catch (error) {
-    console.error('Error saving booking:', error);
+    console.error('Error saving booking to Supabase:', error);
     throw error;
   }
 };

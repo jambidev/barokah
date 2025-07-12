@@ -19,7 +19,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ onNavigate }) => {
     printerModel: '',
     problemCategory: '',
     problemDescription: '',
-    serviceType: 'bring-to-shop',
+    serviceType: 'antar-ke-toko',
     appointmentDate: '',
     appointmentTime: '',
     notes: ''
@@ -525,38 +525,20 @@ const BookingForm: React.FC<BookingFormProps> = ({ onNavigate }) => {
 
                 <div className="space-y-4 sm:space-y-6">
                   <div data-aos="fade-up" data-aos-delay="200">
-                    <label className="block text-sm font-medium text-gray-700 mb-3 sm:mb-4">
-                      Jenis Service *
-                    </label>
-                    <div className="grid sm:grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
-                      <label className="flex items-center p-3 sm:p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 card-hover-subtle">
-                        <input
-                          type="radio"
-                          name="serviceType"
-                          value="bring-to-shop"
-                          checked={formData.serviceType === 'bring-to-shop'}
-                          onChange={handleInputChange}
-                          className="mr-2 sm:mr-3"
-                        />
-                        <div>
-                          <div className="font-medium text-gray-900 text-sm sm:text-base">Antar ke Toko</div>
-                          <div className="text-xs sm:text-sm text-gray-600">Bawa printer ke toko kami</div>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6">
+                      <h3 className="text-lg font-semibold text-blue-900 mb-2">Jenis Service</h3>
+                      <div className="flex items-center space-x-3">
+                        <div className="bg-blue-600 p-2 rounded-full">
+                          <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                          </svg>
                         </div>
-                      </label>
-                      <label className="flex items-center p-3 sm:p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 card-hover-subtle">
-                        <input
-                          type="radio"
-                          name="serviceType"
-                          value="home-service"
-                          checked={formData.serviceType === 'home-service'}
-                          onChange={handleInputChange}
-                          className="mr-2 sm:mr-3"
-                        />
                         <div>
-                          <div className="font-medium text-gray-900 text-sm sm:text-base">Teknisi Datang</div>
-                          <div className="text-xs sm:text-sm text-gray-600">Teknisi datang ke lokasi Anda</div>
+                          <div className="font-semibold text-blue-900">Antar ke Toko</div>
+                          <div className="text-sm text-blue-700">Bawa printer Anda ke toko kami untuk diperbaiki</div>
                         </div>
-                      </label>
+                      </div>
+                      <input type="hidden" name="serviceType" value="antar-ke-toko" />
                     </div>
                   </div>
 

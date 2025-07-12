@@ -11,8 +11,7 @@ const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
     'Refill Tinta Original',
     'Reset Printer Error',
     'Instalasi Driver',
-    'Konsultasi Gratis',
-    'Antar Jemput Service'
+    'Konsultasi Gratis'
   ];
 
   const printerBrands = [

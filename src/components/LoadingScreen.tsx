@@ -104,7 +104,7 @@ const LoadingScreen: React.FC = () => {
       <div className="loading-page">
         <div className="counter">
           <img 
-            src="/barokah.png" 
+            src="https://stellar-gnome-533245.netlify.app/assets/barokah-CaQ0uYpS.png" 
             alt="Barokah Printer Logo" 
             className="logo"
           />

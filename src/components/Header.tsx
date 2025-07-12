@@ -48,7 +48,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
           >
             <div className="bg-white p-1 sm:p-1.5 md:p-2 rounded-lg shadow-sm transition-transform duration-300 group-hover:scale-105">
               <img 
-                src="/barokah.png" 
+                src="https://stellar-gnome-533245.netlify.app/assets/barokah-CaQ0uYpS.png" 
                 alt="Barokah Printer Logo" 
                 className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 lg:h-14 lg:w-14 xl:h-16 xl:w-16 object-contain"
                 style={{ 
@@ -69,7 +69,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, onNavigate }) => {
               <button
                 key={item.id}
                 onClick={() => onNavigate(item.id)}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`px-2 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
                   currentPage === item.id
                     ? 'text-blue-600 bg-blue-50'
                     : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'

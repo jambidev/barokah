@@ -83,8 +83,7 @@ const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
     'Refill Tinta Original',
     'Reset Printer Error',
     'Instalasi Driver & Software',
-    'Konsultasi Gratis',
-    'Antar Jemput Service'
+    'Konsultasi Gratis'
   ];
 
   // Typewriter effect
