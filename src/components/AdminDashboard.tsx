@@ -1114,4 +1114,4 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onLogout })
             <div className="bg-white rounded-lg shadow-md">
               <div className="p-4 sm:p-6 border-b border-gray-200">
                 <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Laporan Transaksi Real-time</h3>
-                <p className="text-gray-600 mt-1">Data transaksi terbaru dan analisis per
+                <p className="text-gray-600 mt-1">Data transaksi terbaru dan analisis periode</p>
